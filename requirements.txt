@@ -1,4 +1,2 @@
-pygame
 numpy
-opencv-python
 carla==0.9.15
