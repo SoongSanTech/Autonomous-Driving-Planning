@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # CARLA 자율주행 시뮬레이션 프로젝트
 
 ## 환경 설정
@@ -37,3 +38,7 @@ python first_ride.py
 - CARLA 패키지 버전(0.9.15)은 서버 버전과 반드시 일치해야 합니다
 - 스크립트 실행 전 CARLA 서버가 실행 중이어야 합니다 (127.0.0.1:2000)
 - OpenCV 창이 열리며 차량 시점의 실시간 카메라 영상이 표시됩니다
+=======
+# Autonomous-Driving-Planning
+Autonomous Driving Planning
+>>>>>>> c2fdc5e6303fee72e4e9dc8c9bc22f031fd752c2
