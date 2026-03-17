@@ -1,4 +1,4 @@
-# 숭산텍(Sungsan Tech) Autonomous Driving Master Spec
+# 숭산텍(Soongsan Tech) Autonomous Driving Master Spec
 
 ## 1. Project Overview
 본 프로젝트는 CARLA 시뮬레이터를 활용하여 현실 세계(Real-world)의 데이터 희소성 문제를 해결하고, Sim-to-Real 전이가 가능한 상용 수준의 자율주행 파이프라인을 구축하는 것을 목표로 한다. 

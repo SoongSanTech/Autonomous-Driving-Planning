@@ -1,4 +1,4 @@
-# 숭산텍(Sungsan Tech) — Sim-to-Real 경량 자율주행 시스템
+# 숭산텍(Soongsan Tech) — Sim-to-Real 경량 자율주행 시스템
 
 > **"엣지 디바이스 제약 하의 Sim-to-Real 경량 자율주행 시스템 구현 및 체계적 실증 분석"**
 
@@ -270,7 +270,7 @@ venv/bin/pytest tests/ -v
 
 ## 라이선스
 
-Sungsan Tech 내부 프로젝트
+Soongsan Tech 내부 프로젝트
 
 ---
 

@@ -35,7 +35,7 @@
 
 ---
 
-# 🚀 [Sungsan Tech] 자율주행 R&D 및 아키텍처 기획서 (Master Document)
+# 🚀 [Soongsan Tech] 자율주행 R&D 및 아키텍처 기획서 (Master Document)
 
 ## 1. 프로젝트 목표 (Goal)
 **"Software-Defined Sensor 및 Hybrid E2E 아키텍처 기반의 초저비용 Sim-to-Real 자율주행 구현"**
@@ -74,7 +74,7 @@
 
 ---
 
-## 4. 숭산텍의 압도적 차별성 (Sungsan Tech's Differentiation)
+## 4. 숭산텍의 압도적 차별성 (Soongsan Tech's Differentiation)
 글로벌 빅테크가 자본(H100 클러스터)으로 밀어붙이는 한계를, 숭산텍은 '설계의 우수성'으로 우회합니다.
 
 1. **Software-Defined Sensor (비용 파괴):** 15만 원대 2D LiDAR 데이터를 카메라 이미지와 융합하여 125만 원 이상의 64채널 3D LiDAR 해상도로 복원하는 Super-Resolution 모델을 구축. 고가 센서 없이도 완벽한 3D 공간 지각 달성.
