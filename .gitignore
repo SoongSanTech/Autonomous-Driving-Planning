@@ -34,3 +34,8 @@ Thumbs.db
 
 # CARLA specific
 *.log
+
+# Data pipeline output
+_out/
+_out_*/
+src/data/
