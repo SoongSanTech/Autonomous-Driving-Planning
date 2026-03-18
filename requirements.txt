@@ -3,3 +3,8 @@ numpy
 opencv-python
 hypothesis
 pytest
+torch
+torchvision
+pandas
+pillow
+gymnasium
