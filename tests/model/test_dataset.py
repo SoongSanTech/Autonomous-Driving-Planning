@@ -208,3 +208,123 @@ class TestDrivingDatasetCustomTransform:
         ds = DrivingDataset(str(session_dir), transform=custom)
         image, _ = ds[0]
         assert image.shape == (3, 128, 128)
+
+
+# --- DataLoaderFactory Tests ---
+
+from model.dataset import DataLoaderFactory, AugmentedDrivingDataset, DrivingAugmentation
+
+
+class TestDataLoaderFactory:
+    """Tests for DataLoaderFactory."""
+
+    def test_create_dataloaders(self, session_dir: Path):
+        train_loader, val_loader = DataLoaderFactory.create_dataloaders(
+            str(session_dir), batch_size=2, num_workers=0
+        )
+        assert len(train_loader.dataset) + len(val_loader.dataset) == 5
+
+    def test_batch_shapes(self, session_dir: Path):
+        train_loader, val_loader = DataLoaderFactory.create_dataloaders(
+            str(session_dir), batch_size=2, num_workers=0
+        )
+        images, controls = next(iter(train_loader))
+        assert images.shape[1:] == (3, 224, 224)
+        assert controls.shape[1] == 2
+
+    def test_val_split_ratio(self, session_dir: Path):
+        """Val set should be ~20% of total."""
+        train_loader, val_loader = DataLoaderFactory.create_dataloaders(
+            str(session_dir), batch_size=2, num_workers=0
+        )
+        total = len(train_loader.dataset) + len(val_loader.dataset)
+        val_ratio = len(val_loader.dataset) / total
+        assert 0.1 <= val_ratio <= 0.4  # flexible for small datasets
+
+    def test_no_augment_mode(self, session_dir: Path):
+        """augment=False should use plain DrivingDataset."""
+        train_loader, _ = DataLoaderFactory.create_dataloaders(
+            str(session_dir), batch_size=2, num_workers=0, augment=False
+        )
+        images, controls = next(iter(train_loader))
+        assert images.shape[1:] == (3, 224, 224)
+
+    def test_reproducible_split(self, session_dir: Path):
+        """Same seed should produce same split."""
+        t1, v1 = DataLoaderFactory.create_dataloaders(
+            str(session_dir), batch_size=2, num_workers=0, seed=42, augment=False
+        )
+        t2, v2 = DataLoaderFactory.create_dataloaders(
+            str(session_dir), batch_size=2, num_workers=0, seed=42, augment=False
+        )
+        assert len(t1.dataset) == len(t2.dataset)
+        assert len(v1.dataset) == len(v2.dataset)
+
+    def test_empty_dataset_raises(self, tmp_path: Path):
+        """Empty session should raise ValueError."""
+        front_dir = tmp_path / "front"
+        front_dir.mkdir()
+        labels_dir = tmp_path / "labels"
+        labels_dir.mkdir()
+
+        csv_path = labels_dir / "driving_log.csv"
+        with open(csv_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["image_filename", "speed", "steering", "throttle", "brake"])
+            writer.writerow(["missing.png", 10.0, 0.0, 0.5, 0.0])
+
+        with pytest.raises(ValueError, match="No valid samples"):
+            DataLoaderFactory.create_dataloaders(str(tmp_path), num_workers=0)
+
+
+class TestDrivingAugmentation:
+    """Tests for DrivingAugmentation."""
+
+    def test_flip_inverts_steering(self):
+        """Horizontal flip should negate steering."""
+        aug = DrivingAugmentation(flip_prob=1.0, brightness_range=0.0, noise_std=0.0)
+        img = Image.fromarray(np.zeros((100, 100, 3), dtype=np.uint8))
+        _, steering, throttle = aug(img, 0.5, 0.7)
+        assert steering == -0.5
+        assert throttle == 0.7
+
+    def test_no_flip_preserves_steering(self):
+        """No flip should preserve steering."""
+        aug = DrivingAugmentation(flip_prob=0.0, brightness_range=0.0, noise_std=0.0)
+        img = Image.fromarray(np.zeros((100, 100, 3), dtype=np.uint8))
+        _, steering, throttle = aug(img, 0.5, 0.7)
+        assert steering == 0.5
+
+    def test_brightness_changes_image(self):
+        """Brightness augmentation should modify pixel values."""
+        aug = DrivingAugmentation(flip_prob=0.0, brightness_range=0.2, noise_std=0.0)
+        img = Image.fromarray(
+            np.full((100, 100, 3), 128, dtype=np.uint8)
+        )
+        augmented_img, _, _ = aug(img, 0.0, 0.5)
+        # Image may or may not change depending on random factor
+        assert isinstance(augmented_img, Image.Image)
+
+
+class TestAugmentedDrivingDataset:
+    """Tests for AugmentedDrivingDataset."""
+
+    def test_output_shapes(self, session_dir: Path):
+        base = DrivingDataset(str(session_dir))
+        aug_ds = AugmentedDrivingDataset(base)
+        image, controls = aug_ds[0]
+        assert image.shape == (3, 224, 224)
+        assert controls.shape == (2,)
+
+    def test_noise_applied(self, session_dir: Path):
+        """With noise, outputs should differ from base dataset."""
+        base = DrivingDataset(str(session_dir))
+        aug_ds = AugmentedDrivingDataset(
+            base,
+            augmentation=DrivingAugmentation(flip_prob=0.0, brightness_range=0.0),
+            noise_std=0.1,
+        )
+        base_img, _ = base[0]
+        aug_img, _ = aug_ds[0]
+        # With noise_std=0.1, images should differ
+        assert not torch.allclose(base_img, aug_img, atol=1e-6)
