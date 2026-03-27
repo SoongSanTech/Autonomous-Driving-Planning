@@ -1,6 +1,7 @@
 # Python
 venv/
 .hypothesis/
+.pytest_cache/
 __pycache__/
 *.py[cod]
 *$py.class
@@ -39,4 +40,11 @@ Thumbs.db
 # Data pipeline output
 _out/
 _out_*/
-src/data/
+src/data/**/*.png
+
+# Model checkpoints
+checkpoints/
+
+# Experiment logs
+experiments/logs/
+experiments/*.db
