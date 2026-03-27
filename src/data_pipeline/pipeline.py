@@ -99,7 +99,12 @@ class DataPipeline:
         """
         daytime_folder = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         self.output_dir = str(Path(self.output_dir) / daytime_folder)
-        self.data_logger = AsyncDataLogger(output_dir=self.output_dir)
+        self.data_logger = AsyncDataLogger(
+            output_dir=self.output_dir,
+            queue_size=5000,
+            num_workers=4,
+            png_compression=1,
+        )
         logger.info("Output directory resolved to: %s", self.output_dir)
 
     def _register_signal_handlers(self) -> None:
@@ -203,6 +208,61 @@ class DataPipeline:
         self.camera.listen(camera_callback)
         logger.info("Camera sensor attached to %s", self.vehicle.type_id)
 
+    def _respawn_vehicle(self) -> None:
+        """Respawn ego vehicle after collision/destruction.
+
+        Destroys old camera, spawns new vehicle at random spawn point,
+        re-attaches camera sensor, and enables autopilot.
+        """
+        # Clean up old camera
+        if self.camera:
+            try:
+                self.camera.stop()
+                self.camera.destroy()
+            except RuntimeError:
+                pass
+
+        blueprint_library = self.world.get_blueprint_library()
+        vehicle_bp = blueprint_library.filter("vehicle.tesla.model3")[0]
+        spawn_points = self.world.get_map().get_spawn_points()
+
+        import random
+        random.shuffle(spawn_points)
+
+        vehicle = None
+        for sp in spawn_points[:10]:
+            try:
+                vehicle = self.world.spawn_actor(vehicle_bp, sp)
+                break
+            except RuntimeError:
+                continue
+
+        if vehicle is None:
+            raise RuntimeError("Failed to respawn vehicle at any spawn point")
+
+        vehicle.set_autopilot(True)
+        self.vehicle = vehicle
+        logger.info("Respawned vehicle at %s", sp.location)
+
+        # Re-attach camera
+        camera_bp = blueprint_library.find("sensor.camera.rgb")
+        camera_bp.set_attribute("image_size_x", "800")
+        camera_bp.set_attribute("image_size_y", "600")
+        camera_transform = carla.Transform(carla.Location(x=1.5, z=2.4))
+        self.camera = self.world.spawn_actor(
+            camera_bp, camera_transform, attach_to=self.vehicle
+        )
+        self.latest_image = None
+
+        def camera_callback(image):
+            array = np.frombuffer(image.raw_data, dtype=np.uint8)
+            array = array.reshape((600, 800, 4))
+            self.latest_image = array[:, :, :3]
+
+        self.camera.listen(camera_callback)
+        logger.info("Camera re-attached after respawn")
+
+
     def run(self, duration_sec: float = 3600.0) -> None:
         """
         Execute data collection for specified duration.
@@ -256,12 +316,20 @@ class DataPipeline:
                         velocity = self.vehicle.get_velocity()
                         control = self.vehicle.get_control()
                     except RuntimeError:
-                        logger.error(
-                            "Ego vehicle destroyed by CARLA! "
-                            "Saving %d frames collected so far.",
+                        logger.warning(
+                            "Ego vehicle destroyed (collision). "
+                            "Respawning... (%d frames so far)",
                             self.frames_captured,
                         )
-                        break
+                        try:
+                            self._respawn_vehicle()
+                            episode_start_time = time.time()
+                            self.episode_manager.start_new_episode()
+                            time.sleep(1.0)  # Wait for vehicle to stabilize
+                        except Exception as e:
+                            logger.error("Respawn failed: %s. Stopping.", e)
+                            break
+                        continue
 
                     speed = (
                         velocity.x ** 2 + velocity.y ** 2 + velocity.z ** 2

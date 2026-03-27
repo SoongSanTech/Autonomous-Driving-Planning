@@ -43,7 +43,7 @@ class AsyncDataLogger:
         Initialize asynchronous data logger.
 
         Args:
-            output_dir: Base directory for images/ and labels/ subdirectories.
+            output_dir: Base directory for front/ and labels/ subdirectories.
             queue_size: Maximum queue capacity (default 1000 frames).
             num_workers: Number of I/O worker threads (default 2).
             png_compression: PNG compression level 0-9 (default 3, lower=faster).
@@ -68,7 +68,7 @@ class AsyncDataLogger:
         self.frame_drops = 0
 
         # Create output directories
-        self._images_dir = self.output_dir / "images"
+        self._images_dir = self.output_dir / "front"
         self._labels_dir = self.output_dir / "labels"
         self._images_dir.mkdir(parents=True, exist_ok=True)
         self._labels_dir.mkdir(parents=True, exist_ok=True)
@@ -115,15 +115,17 @@ class AsyncDataLogger:
             vehicle_state=vehicle_state,
         )
 
-        # Warn when queue reaches 90% capacity
+        # Warn when queue reaches 90% capacity (throttled to once per 100 frames)
         current_size = self._queue.qsize()
         if current_size >= 0.9 * self.queue_size:
-            logger.warning(
-                "Queue at %.0f%% capacity (%d/%d)",
-                (current_size / self.queue_size) * 100,
-                current_size,
-                self.queue_size,
-            )
+            if not hasattr(self, '_last_queue_warn') or frame_data.frame_id - self._last_queue_warn >= 10000:
+                logger.warning(
+                    "Queue at %.0f%% capacity (%d/%d)",
+                    (current_size / self.queue_size) * 100,
+                    current_size,
+                    self.queue_size,
+                )
+                self._last_queue_warn = frame_data.frame_id
 
         try:
             self._queue.put_nowait(frame_data)

@@ -4,7 +4,7 @@ Integration test for a 10-second data collection session (Task 8.1).
 This test simulates the full pipeline flow with mocked CARLA interactions
 but a real AsyncDataLogger writing actual PNG and CSV files to disk.
 It verifies:
-- PNG files are created in {output}/images/
+- PNG files are created in {output}/front/
 - driving_log.csv is created in {output}/labels/
 - File counts match expected frame count (~100 frames at 10Hz for 10s)
 - CSV has correct headers and row count
@@ -75,7 +75,7 @@ class TestTenSecondCollectionSession:
         # Graceful shutdown — flushes the queue
         logger_inst.stop()
 
-        images_dir = tmp_path / "images"
+        images_dir = tmp_path / "front"
         labels_dir = tmp_path / "labels"
         csv_path = labels_dir / "driving_log.csv"
 
@@ -265,7 +265,7 @@ class TestEpisodeTransitionSession:
         )
 
         # --- Verify PNG files ---
-        images_dir = tmp_path / "images"
+        images_dir = tmp_path / "front"
         png_files = sorted(images_dir.glob("*.png"))
         assert len(png_files) == TRANSITION_FRAMES, (
             f"Expected {TRANSITION_FRAMES} PNG files, got {len(png_files)}"
